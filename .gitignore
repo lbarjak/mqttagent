@@ -1,0 +1,5 @@
+__pycache__/
+.venv
+temps.txt
+activate
+ip.txt

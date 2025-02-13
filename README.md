@@ -1,0 +1,1 @@
+An MQTT agent between Zigbee2MQTT and Node-RED calculates the 24-hour average of the temperature sensors.
