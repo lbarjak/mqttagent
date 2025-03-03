@@ -35,6 +35,7 @@ def handle_message(topic, message):
     from_device = topic.split("/")[1]
     print(f"from: {from_device}")
     # print(f"Message content: {message}")
+    print(datetime.now())
     try:
         json_message = json.loads(message)
         temp = json_message["temperature"]
@@ -68,13 +69,9 @@ mqtt_client = MqttClient(
 
 mqtt_client.publish_message("alert/mqttagent", "mqttagent started")
 
-
-def timing():
-    print("=" * 56)
-    print("The timing() function ran at:", datetime.now())
-    print("=" * 56)
-
-
-while True:
-    timing()
-    time.sleep(600)
+# Main loop to keep the script running
+try:
+    while True:
+        time.sleep(1)  # Sleep to prevent high CPU usage
+except KeyboardInterrupt:
+    print("Exiting...")
