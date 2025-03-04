@@ -3,7 +3,6 @@ from Averages import TempsFile
 from datetime import datetime
 import json
 from Dev import Dev, devs
-import time
 
 
 def load_devices():
@@ -42,7 +41,7 @@ def handle_message(topic, message):
         average_temp = temps_file.get_average(from_device)
         devs[from_device].average = average_temp
 
-        # mqtt_client.publish_message("average/" + from_device, average_temp)
+        mqtt_client.publish_message("average/" + from_device, average_temp)
 
         print(f"temperature: {temp}, humidity: {hum}, battery: {batt}")
         print(f"Average temperature: {average_temp}")
@@ -70,7 +69,6 @@ mqtt_client = MqttClient(
 mqtt_client.publish_message("alert/mqttagent", "mqttagent started")
 
 try:
-    while True:
-        time.sleep(1)  # Sleep to prevent high CPU usage
+    mqtt_client.client.loop_forever()
 except KeyboardInterrupt:
     print("Exiting...")

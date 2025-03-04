@@ -28,11 +28,11 @@ class MqttClient:
         for topic in topics:
             self.subscribe(topic)
 
-        self.client.loop_start()  # Start the loop in a non-blocking way
+        # Removed self.client.loop_start()  # Start the loop in a non-blocking way
 
-        self.missing_data_timeout = 240  # Idő (másodpercekben) a figyelmeztetéshez
-        self.data_timer = None  # Időzítő inicializálása
-        self.client.on_disconnect = self.on_disconnect  # Kapcsolat megszakadás kezelése
+        self.missing_data_timeout = 240  # Time (in seconds) for the warning
+        self.data_timer = None  # Timer initialization
+        self.client.on_disconnect = self.on_disconnect  # Handle disconnection
 
     def on_connect(self, client, userdata, flags, rc):
         if rc == 0:
@@ -55,20 +55,20 @@ class MqttClient:
             self.on_message(
                 msg.topic, msg.payload.decode()
             )  # Call the callback with the message
-        self.reset_data_timer()  # Üzenet érkezett, reseteli az időzítőt
+        self.reset_data_timer()  # Message received, reset the timer
 
     def on_disconnect(self, client, userdata, rc):
         print("Disconnected from broker")
         if rc != 0:
             print("Unexpected disconnection. Attempting to reconnect...")
 
-        max_retries = 5  # Maximális próbálkozások száma
+        max_retries = 5  # Maximum number of retries
         for attempt in range(max_retries):
             try:
-                time.sleep(5)  # Várj 5 másodpercet az újracsatlakozás előtt
-                self.client.reconnect()  # Újra próbálkozás a kapcsolattal
+                time.sleep(5)  # Wait 5 seconds before retrying
+                self.client.reconnect()  # Attempt to reconnect
                 print("Reconnected successfully")
-                break  # Sikeres újracsatlakozás esetén kilép a ciklusból
+                break  # Exit the loop on successful reconnection
             except Exception as e:
                 print(
                     f"Reconnect failed: {e}. Retrying ({attempt + 1}/{max_retries})..."
@@ -78,16 +78,16 @@ class MqttClient:
 
     def reset_data_timer(self):
         if self.data_timer is not None:
-            self.data_timer.cancel()  # Állítsd le a korábbi időzítőt
+            self.data_timer.cancel()  # Stop the previous timer
         self.data_timer = threading.Timer(
             self.missing_data_timeout, self.on_missing_data
         )
-        self.data_timer.start()  # Indítsd el az új időzítőt
+        self.data_timer.start()  # Start the new timer
 
     def on_missing_data(self):
         print(f"Warning: No data received for {self.missing_data_timeout} seconds.")
         print("-" * 54)
-        self.reset_data_timer()  # Újraindítja az időzítőt
+        self.reset_data_timer()  # Restart the timer
 
     def disconnect(self):
         self.client.loop_stop()

@@ -6,7 +6,7 @@ TEMPS_FILE = "temps.txt"
 
 class TempsFile:
     def __init__(self):
-        self.temps = {}
+        self.temps = {}  # Structure: {device: {timestamp: temperature}}
         self.load_temps()
 
     def load_temps(self):
@@ -24,7 +24,7 @@ class TempsFile:
         """Save only the last 24 hours' temperature readings to the file."""
         with open(TEMPS_FILE, "w") as file:
             for device, timestamps in self.temps.items():
-                # Szűrjük ki a 24 óránál régebbi adatokat
+                # Filter out data older than 24 hours
                 current_time = datetime.now()
                 filtered_timestamps = {
                     timestamp: temperature
@@ -33,7 +33,7 @@ class TempsFile:
                     >= current_time - timedelta(hours=24)
                 }
 
-                if filtered_timestamps:  # Csak akkor írunk, ha van érvényes adat
+                if filtered_timestamps:  # Only write if there is valid data
                     temp_entries = [
                         f"{timestamp} {temp}"
                         for timestamp, temp in filtered_timestamps.items()
