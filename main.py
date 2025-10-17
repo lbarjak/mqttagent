@@ -41,7 +41,7 @@ def handle_message(topic, message):
         average_temp = temps_file.get_average(from_device)
         devs[from_device].average = average_temp
 
-        mqtt_client.publish_message("average/" + from_device, average_temp)
+        # mqtt_client.publish_message("average/" + from_device, average_temp)
 
         print(f"temperature: {temp}, humidity: {hum}, battery: {batt}")
         print(f"Average temperature: {average_temp}")
