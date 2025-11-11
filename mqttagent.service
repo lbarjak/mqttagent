@@ -1,0 +1,25 @@
+[Unit]
+Description=MQTT Agent - Temperature and Humidity Monitor
+After=network-online.target mosquitto.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/lbarjak/mqttagent
+Environment="PYTHONUNBUFFERED=1"
+ExecStart=/home/lbarjak/mqttagent/.venv/bin/python /home/lbarjak/mqttagent/main.py
+Restart=on-failure
+RestartSec=10
+StartLimitBurst=5
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=mqttagent
+
+# Security settings (optional but recommended)
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
