@@ -15,6 +15,7 @@ class MqttClient:
                 file.readline().strip()
             )  # Read the first line and strip whitespace
 
+        self.topics = topics  # Store topics for resubscription after reconnect
         self.client = mqtt.Client()
         self.client.on_message = self.on_message_received
         self.client.connect(
@@ -25,7 +26,7 @@ class MqttClient:
         self.on_message = on_message  # Callback for incoming messages
 
         # Subscribe to all topics in the provided list
-        for topic in topics:
+        for topic in self.topics:
             self.subscribe(topic)
 
         self.client.loop_start()  # Start the loop in a non-blocking way
@@ -37,6 +38,10 @@ class MqttClient:
     def on_connect(self, client, userdata, flags, rc):
         if rc == 0:
             print("Connected successfully")
+            # Resubscribe to all topics after reconnect to prevent subscription loss
+            for topic in self.topics:
+                self.subscribe(topic)
+                print(f"Subscribed to: {topic}")
             print("-" * 54)
             self.reset_data_timer()  # Start the timer
         else:
