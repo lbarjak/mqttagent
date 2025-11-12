@@ -1,39 +1,45 @@
 import paho.mqtt.client as mqtt
 import threading
 import time
+import json
 
 
 class MqttClient:
-    def __init__(self, message="", topics=None, on_message=None):
+    def __init__(self, message="", topics=None, on_message=None, config=None):
         print("init topics:", topics)
         if topics is None:
             topics = ["zigbee2mqtt/hőmérő_sz1"]  # Default topic if none provided
 
-        # Read the IP address from ip.txt file
-        with open("ip.txt", "r") as file:
-            ip_address = (
-                file.readline().strip()
-            )  # Read the first line and strip whitespace
+        # Load config
+        if config is None:
+            with open("config.json", "r") as file:
+                config = json.load(file)
+        
+        self.config = config
+        broker_ip = config["mqtt"]["broker"]
+        port = config["mqtt"]["port"]
+        keepalive = config["mqtt"]["keepalive"]
+        self.missing_data_timeout = config["mqtt"]["missing_data_timeout"]
 
         self.topics = topics  # Store topics for resubscription after reconnect
         self.client = mqtt.Client()
-        self.client.on_message = self.on_message_received
-        self.client.connect(
-            ip_address, 1883, keepalive=60
-        )  # Use the IP address read from the file
-        self.client.on_connect = self.on_connect
         self.message = message
         self.on_message = on_message  # Callback for incoming messages
+        
+        # Set callbacks BEFORE connecting
+        self.client.on_connect = self.on_connect
+        self.client.on_message = self.on_message_received
+        self.client.on_disconnect = self.on_disconnect
+        
+        self.client.connect(broker_ip, port, keepalive=keepalive)
 
-        # Subscribe to all topics in the provided list
-        for topic in self.topics:
-            self.subscribe(topic)
+        # NOTE: Subscriptions are handled in on_connect callback (see line ~49)
+        # This ensures subscriptions are renewed after reconnects automatically
+        
+        # NOTE: loop_start() removed - loop_forever() is called in main.py instead
+        # self.client.loop_start()  # Start the loop in a non-blocking way
 
-        self.client.loop_start()  # Start the loop in a non-blocking way
-
-        self.missing_data_timeout = 240  # Idő (másodpercekben) a figyelmeztetéshez
         self.data_timer = None  # Időzítő inicializálása
-        self.client.on_disconnect = self.on_disconnect  # Kapcsolat megszakadás kezelése
 
     def on_connect(self, client, userdata, flags, rc):
         if rc == 0:
@@ -57,29 +63,23 @@ class MqttClient:
 
     def on_message_received(self, client, userdata, msg):
         if self.on_message:
-            self.on_message(
-                msg.topic, msg.payload.decode()
-            )  # Call the callback with the message
+            try:
+                payload = msg.payload.decode('utf-8')
+                self.on_message(msg.topic, payload)
+            except UnicodeDecodeError as e:
+                print(f"Error: Failed to decode message from {msg.topic}: {e}")
+                return
+            except Exception as e:
+                print(f"Error in message callback for {msg.topic}: {e}")
+                return
         self.reset_data_timer()  # Üzenet érkezett, reseteli az időzítőt
 
     def on_disconnect(self, client, userdata, rc):
         print("Disconnected from broker")
         if rc != 0:
-            print("Unexpected disconnection. Attempting to reconnect...")
-
-        max_retries = 5  # Maximális próbálkozások száma
-        for attempt in range(max_retries):
-            try:
-                time.sleep(5)  # Várj 5 másodpercet az újracsatlakozás előtt
-                self.client.reconnect()  # Újra próbálkozás a kapcsolattal
-                print("Reconnected successfully")
-                break  # Sikeres újracsatlakozás esetén kilép a ciklusból
-            except Exception as e:
-                print(
-                    f"Reconnect failed: {e}. Retrying ({attempt + 1}/{max_retries})..."
-                )
-        else:
-            print("Max retries reached. Could not reconnect.")
+            print(f"Unexpected disconnection (code {rc}). Will auto-reconnect...")
+        # NOTE: Do NOT manually call reconnect() here - loop_forever() handles it automatically
+        # Manually calling reconnect() in the callback blocks the network thread and causes issues
 
     def reset_data_timer(self):
         if self.data_timer is not None:

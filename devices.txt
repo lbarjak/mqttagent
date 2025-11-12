@@ -1,3 +1,0 @@
-hőmérő_sz1
-hőmérő_sz3
-hőmérő_xz9
