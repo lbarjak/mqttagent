@@ -34,9 +34,28 @@ def handle_message(topic, message):
         print(datetime.now())
         
         json_message = json.loads(message)
+        
+        # Check if message contains required data
+        if not json_message or not isinstance(json_message, dict):
+            print(f"Warning: Empty or invalid message from {from_device}: {message}")
+            return
+            
+        # Check for required fields
+        required_fields = ["temperature", "humidity", "battery"]
+        missing_fields = [field for field in required_fields if field not in json_message]
+        
+        if missing_fields:
+            print(f"Warning: Missing fields {missing_fields} in message from {from_device}: {json_message}")
+            return
+        
         temp = json_message["temperature"]
         hum = json_message["humidity"]
         batt = json_message["battery"]
+        
+        # Validate data types
+        if not isinstance(temp, (int, float)) or not isinstance(hum, (int, float)) or not isinstance(batt, (int, float)):
+            print(f"Warning: Invalid data types in message from {from_device}: temp={temp}, hum={hum}, batt={batt}")
+            return
 
         # Update device data
         if from_device not in devs:
@@ -54,7 +73,8 @@ def handle_message(topic, message):
         average_temp = temps_file.get_average(from_device)
         devs[from_device].average = average_temp
 
-        # mqtt_client.publish_message("average/" + from_device, average_temp)
+        if average_temp is not None:
+            mqtt_client.publish_message("average/" + from_device, average_temp)
 
         print(f"temperature: {temp}, humidity: {hum}, battery: {batt}")
         print(f"Average temperature: {average_temp}")

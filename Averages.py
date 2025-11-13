@@ -48,7 +48,6 @@ class TempsFile:
                                 timestamp, temperature = entry.rsplit(" ", 1)
                                 self.temps[device][timestamp] = float(temperature)
                             except (ValueError, IndexError) as e:
-                                print(f"Skipping malformed entry '{entry}': {e}")
                                 continue
 
     def _background_writer(self):
@@ -108,33 +107,36 @@ class TempsFile:
             self.dirty = True  # Mark for eventual save by background thread
 
     def filter_last_24_hours(self, device):
-        """Filter data from the last 24 hours."""
+        """Filter data from the last retention period - kept for compatibility."""
         with self.lock:
             if device not in self.temps:
-                print(f"No data for device '{device}'.")
                 return {}
 
-            now = datetime.now()  # Current time
-            yesterday = now - timedelta(hours=24)  # 24 hours ago
+            now = datetime.now()
+            cutoff = now - timedelta(hours=self.retention_hours)
 
-            # Store filtered data
             filtered_temps = {}
             for timestamp, temperature in self.temps[device].items():
-                # Check if the timestamp is within the last 24 hours
-                if datetime.fromisoformat(timestamp) >= yesterday:
-                    filtered_temps[timestamp] = temperature
+                try:
+                    ts_datetime = datetime.fromisoformat(timestamp)
+                    if ts_datetime >= cutoff:
+                        filtered_temps[timestamp] = temperature
+                except ValueError:
+                    # Skip invalid timestamps but keep the data
+                    continue
 
             return filtered_temps
 
     def get_average(self, device):
-        """Calculate the average temperature for the retention period."""
+        """Calculate the average temperature from the last 24 hours."""
         if device not in self.temps:
-            return None  # Consistent: None if no data
+            return None
 
+        # Filter data to only include the last 24 hours
         filtered_temps = self.filter_last_24_hours(device)
-        device_temps = list(filtered_temps.values())
-
-        if device_temps:
-            average = round((sum(device_temps) / len(device_temps)), 2)
+        
+        if filtered_temps:
+            temp_values = list(filtered_temps.values())
+            average = round((sum(temp_values) / len(temp_values)), 2)
             return average
         return None
